@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Age on Other Worlds</title>
+<style>
+  :root {
+    --bg: #151a3b;
+    --panel: #1e2550;
+    --line: #36407a;
+    --text: #ece9e1;
+    --muted: #a9aed0;
+    --gold: #f0c35a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 40px;
+    background: var(--bg); color: var(--text);
+    font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif; line-height: 1.5;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 0 0 4px; font-weight: 700; }
+  .student { color: var(--muted); margin: 0 0 20px; }
+  .student b { color: var(--text); }
+  .intro { max-width: 62ch; color: var(--muted); margin: 0 0 24px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  label { display: flex; flex-direction: column; font-size: .9rem; color: var(--muted); gap: 4px; }
+  input[type=date] { font: inherit; padding: 9px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); color-scheme: dark; }
+  button { font: inherit; font-weight: 700; padding: 10px 18px; border-radius: 6px; border: 0; cursor: pointer; background: var(--gold); color: #251c05; }
+  button.alt { background: transparent; color: var(--text); border: 1px solid var(--gold); }
+  button:hover { filter: brightness(1.1); }
+  :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  #msg { margin: 10px 0 0; min-height: 1.4em; color: #ff9d8a; }
+
+  .result { margin: 22px 0; padding: 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); min-height: 96px; }
+  .result .big { font-family: Georgia, serif; font-size: clamp(2rem, 7vw, 3.4rem); color: var(--gold); line-height: 1.1; }
+  .result p { margin: 4px 0 0; color: var(--muted); }
+
+  .planets { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; list-style: none; padding: 0; margin: 0; }
+  .planet { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 14px 12px; text-align: center; cursor: pointer; color: var(--text); font-weight: 400; }
+  .planet[aria-pressed=true] { border-color: var(--gold); }
+  .orb { display: block; margin: 0 auto 10px; border-radius: 50%; }
+  .planet strong { display: block; font-size: 1.05rem; }
+  .planet small { color: var(--muted); display: block; }
+  .planet .age { display: block; margin-top: 6px; font-family: Georgia, serif; font-size: 1.25rem; color: var(--gold); min-height: 1.6em; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 400; }
+  td:last-child, th:last-child { text-align: right; }
+  .note { color: var(--muted); font-size: .85rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Your Age on Other Worlds</h1>
+  <p class="student">
+    <b>Full name:</b> Mackenzie Domingo &nbsp;|&nbsp;
+    <b>Course:</b> BS Information Technology &nbsp;|&nbsp;
+    <b>Section:</b> 1D
+  </p>
+
+  <p class="intro">A planet's year is the time it takes to orbit the Sun once. Enter your birthday, then pick a planet to see how old you would be there, or show every planet at once.</p>
+
+  <div class="controls">
+    <label for="dob">Your birthday
+      <input type="date" id="dob">
+    </label>
+    <button id="calcSelected">Age on selected planet</button>
+    <button id="calcAll" class="alt">Show all planets</button>
+  </div>
+  <p id="msg" role="alert"></p>
+
+  <div class="result" id="result" aria-live="polite">
+    <p>Your result will appear here.</p>
+  </div>
+
+  <ul class="planets" id="planets"></ul>
+
+  <h2 style="font-family:Georgia,serif;margin-top:32px;">Ages on all planets</h2>
+  <div id="tableWrap"><p class="note">Press "Show all planets" to fill this table.</p></div>
+
+  <p class="note">Formula: your Earth days lived &divide; the planet's year length in Earth days. Pluto was reclassified as a dwarf planet in 2006 but is included here as the ninth world.</p>
+</div>
+
+<script>
+  // Year lengths in Earth days (values from the activity sheet)
+  var PLANETS = [
+    { name: "Mercury", days: 88,    size: 28, color: "#b3a79a" },
+    { name: "Venus",   days: 225,   size: 46, color: "#e3b779" },
+    { name: "Earth",   days: 365,   size: 48, color: "#4a90d9" },
+    { name: "Mars",    days: 687,   size: 36, color: "#c8573a" },
+    { name: "Jupiter", days: 4380,  size: 80, color: "#d2a77c" },
+    { name: "Saturn",  days: 10767.5, size: 70, color: "#e6cf8f" },
+    { name: "Uranus",  days: 30660, size: 56, color: "#8fd8dc" },
+    { name: "Neptune", days: 60152, size: 54, color: "#4a63d9" },
+    { name: "Pluto",   days: 90520, size: 22, color: "#c9b8a6", note: "dwarf planet" }
+  ];
+
+  var selected = 2; // Earth by default
+  var list = document.getElementById("planets");
+  var msg = document.getElementById("msg");
+  var result = document.getElementById("result");
+  var dobInput = document.getElementById("dob");
+
+  dobInput.max = new Date().toISOString().split("T")[0];
+
+  function yearLabel(p) {
+    var yrs = p.days / 365;
+    return p.days < 365 ? p.days + " Earth days" : p.days.toLocaleString() + " Earth days (" + yrs.toFixed(1) + " yrs)";
+  }
+
+  function buildCards() {
+    list.innerHTML = "";
+    PLANETS.forEach(function (p, i) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "planet";
+      b.setAttribute("aria-pressed", i === selected);
+      b.innerHTML =
+        '<span class="orb" style="width:' + p.size + 'px;height:' + p.size + 'px;' +
+        'background:radial-gradient(circle at 30% 30%, #fff8 0%, ' + p.color + ' 40%, #0006 120%)"></span>' +
+        '<strong>' + p.name + '</strong>' +
+        '<small>' + (p.note ? p.note + ' · ' : '') + 'year = ' + yearLabel(p) + '</small>' +
+        '<span class="age" id="age-' + i + '"></span>';
+      b.addEventListener("click", function () { selected = i; refreshSelection(); if (getDays() !== null) showSelected(); });
+      li.appendChild(b);
+      list.appendChild(li);
+    });
+  }
+
+  function refreshSelection() {
+    var cards = list.querySelectorAll(".planet");
+    for (var i = 0; i < cards.length; i++) cards[i].setAttribute("aria-pressed", i === selected);
+  }
+
+  // Returns days lived, or null (and shows a message) if the date is invalid
+  function getDays() {
+    msg.textContent = "";
+    if (!dobInput.value) { msg.textContent = "Enter your birthday first."; return null; }
+    var parts = dobInput.value.split("-");
+    var birth = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]);
+    var now = new Date();
+    var today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    if (birth > today) { msg.textContent = "Your birthday can't be in the future."; return null; }
+    return Math.floor((today - birth) / 86400000);
+  }
+
+  function showSelected() {
+    var d = getDays();
+    if (d === null) return;
+    var p = PLANETS[selected];
+    var age = d / p.days;
+    result.innerHTML =
+      '<p>You have lived ' + d.toLocaleString() + ' Earth days. On ' + p.name + ' you are</p>' +
+      '<div class="big">' + age.toFixed(2) + ' years old</div>' +
+      '<p>' + d.toLocaleString() + ' ÷ ' + p.days.toLocaleString() + ' = ' + age.toFixed(4) + '</p>';
+    document.getElementById("age-" + selected).textContent = age.toFixed(2);
+  }
+
+  function showAll() {
+    var d = getDays();
+    if (d === null) return;
+    var rows = "";
+    PLANETS.forEach(function (p, i) {
+      var age = d / p.days;
+      document.getElementById("age-" + i).textContent = age.toFixed(2);
+      rows += "<tr><td>" + p.name + (p.note ? " (" + p.note + ")" : "") + "</td><td>" +
+              p.days.toLocaleString() + "</td><td>" + age.toFixed(2) + "</td></tr>";
+    });
+    document.getElementById("tableWrap").innerHTML =
+      "<table><thead><tr><th>Planet</th><th>Year length (Earth days)</th><th>Your age</th></tr></thead><tbody>" + rows + "</tbody></table>";
+    result.innerHTML =
+      '<p>You have lived</p><div class="big">' + d.toLocaleString() + ' Earth days</div>' +
+      '<p>Your age on every planet is shown on the cards and in the table below.</p>';
+  }
+
+  document.getElementById("calcSelected").addEventListener("click", showSelected);
+  document.getElementById("calcAll").addEventListener("click", showAll);
+  buildCards();
+</script>
+</body>
+</html>
